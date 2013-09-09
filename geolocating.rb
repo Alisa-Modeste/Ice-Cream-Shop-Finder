@@ -41,13 +41,42 @@ p results["results"][0]["name"]
 
 stores_array = []
 results["results"].each do |r|
-  set = Set.new [r["geometry"]["location"]["lng"],
-  r["geometry"]["location"]["lat"],
-  r["name"]]
-  stores_array << set
+  hash = {lng: r["geometry"]["location"]["lng"],
+  lat: r["geometry"]["location"]["lat"],
+  name: r["name"]}
+  # calculate distance and add to hash
+
+
+  stores_array << hash
 end
 
-p stores_array
+# request URL: http://maps.googleapis.com/maps/api/directions/output?parameters
 
+address = Addressable::URI.new(
+  scheme: "http",
+  host: "maps.googleapis.com",
+  path: "maps/api/directions/json",
+  query_values: {origin: "#{latitude},#{longitude}",
+                destination: "#{stores_array[0][:lat]},#{stores_array[0][:lng]}",
+                  sensor: false }
+                  #change travel mode
+                  #html_instructions
+).to_s
+
+
+
+def get_directions(address)
+  response = RestClient.get(address)
+  results = JSON.parse(response)
+
+  #results["routes"][0]["legs"][0]["distance"]
+  #p results["routes"][0]["legs"][0]["distance"]["text"]
+  #
+  p results["routes"][0]["legs"][0]["steps"][0]
+  puts "puts steps"
+  results["routes"][0]["legs"][0]["steps"].each do |step|
+    p step["html_instructions"]
+  end
+end
 
 
