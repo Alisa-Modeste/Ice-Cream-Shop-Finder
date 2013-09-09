@@ -1,13 +1,5 @@
 class Follow < ActiveRecord::Base
-  # belongs_to(
- #  :followee,
- #  class_name: "Follow",
- #  foreign_key: :twitter_followee_id
- #  )
- #
- # has_many(
-#  :fo)
-#
+  attr_accessible :twitter_follower_id, :twitter_followee_id
 
 
   belongs_to(

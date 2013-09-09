@@ -38,46 +38,62 @@ class User < ActiveRecord::Base
     ).to_s
 
     response = TwitterSession.get(address)
-    self.parse_twitter_params(response)
+    self.parse_twitter_params(response)[0]
   end
 
   def self.parse_twitter_params(json_input)
-    hash = JSON.parse(json_input.body)[0]
-    user_hash = { screen_name: hash["screen_name"],
-              twitter_user_id: hash["id"] }
+    hash = JSON.parse(json_input.body)
+    users = []
+    hash.each do |h|
+      p h
+      user_hash = { screen_name: h["screen_name"],
+                twitter_user_id: h["id"] }
 
-    result = User.where("twitter_user_id = ?", hash["id"])
+      result = User.where("twitter_user_id = ?", h["id"])
 
-    if result.empty?
-      User.new(user_hash)
-    else
-      result[0]
+      if result.empty?
+        users << User.new(user_hash)
+      else
+        users << result[0]
+      end
     end
+
+    users
 
   end
 
   def self.fetch_by_ids(ids)
     users = []
 
-   # ids.each do |id|
+    address = Addressable::URI.new(
+      scheme: "http", # s?
+      host: "api.twitter.com",
+      path: "1.1/users/lookup.json",
+      query_values: {user_id: ids.join(",")}
+    ).to_s
 
+    response = TwitterSession.post(address)
+    result = User.parse_twitter_params(response)
 
-        # ask twitter
-        address = Addressable::URI.new(
-          scheme: "http", # s?
-          host: "api.twitter.com",
-          path: "1.1/users/lookup.json",
-          query_values: {user_id: ids.join(",")}
-        ).to_s
+    #p result
+  end
 
-        response = TwitterSession.post(address)
-        result = self.parse_twitter_params(response)
+  def fetch_followers
+    users = []
 
-        p result
-#user = User.where("twitter_user_id = ?", id)
-   #   end
-    #  users << user
-  #  end
+    address = Addressable::URI.new(
+      scheme: "https", # s?
+      host: "api.twitter.com",
+      path: "1.1/followers/ids.json",
+      query_values: {user_id: self.twitter_user_id}
+    ).to_s
+
+    p self.twitter_user_id
+    response = TwitterSession.get(address)
+   # result = User.parse_twitter_params(response)
+  s = JSON.parse(response.body)
+   p "Respnoe #{s}"
+   result = User.fetch_by_ids(s["ids"])
   end
 
   def sync_statuses
@@ -90,8 +106,31 @@ class User < ActiveRecord::Base
     end
   end
 
-  def format
-   # User.
+  def sync_followers
+    followers = self.fetch_followers
+    follower_ids = followers.map {|follower| follower.id}
+    old_follows = Follow.where("twitter_followee_id = ?", self.twitter_user_id)
+    #old_follower_ids = old_follows.map {|old_follow| old_follow.twitter_follower_id}
+
+    followers.each do |follower|
+      unless follower.persisted?
+        follower.save!
+      end
+    end
+
+    old_follows.each do |old_follow|
+      unless follower_ids.include?(old_follow.twitter_follower_id)
+        old_follow.destroy
+      end
+    end
+
+    follower_ids.each do |follower|
+      f = Follow.new(twitter_followee_id: self.twitter_user_id, twitter_follower_id: follower)
+      unless f.persisted?
+        f.save!
+      end
+    end
+
   end
 
 
