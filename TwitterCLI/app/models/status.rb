@@ -44,5 +44,26 @@ class Status < ActiveRecord::Base
     statuses
   end
 
+  def self.post(text)
+    address = Addressable::URI.new(
+      scheme: "https",
+      host: "api.twitter.com",
+      path: "1.1/statuses/update.json",
+      query_values: {status: text}
+    ).to_s
+
+    response = TwitterSession.post(address)
+    obj = JSON.parse(response.body)
+    user_hash = obj["user"]
+    local_copy_of_user = User.fetch_by_screen_name(user_hash["screen_name"])
+    user = User.new(:screen_name => user_hash["screen_name"],
+      :twitter_user_id => user_hash["id"])
+    user.save! if local_copy_of_user.nil?
+
+    status = Status.new({twitter_status_id: obj["id"], body: text, user_id:
+       user_hash["id"]})
+   status.save!
+  end
+
 
 end
