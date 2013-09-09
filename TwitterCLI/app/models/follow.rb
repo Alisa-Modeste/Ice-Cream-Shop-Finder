@@ -6,13 +6,13 @@ class Follow < ActiveRecord::Base
   :follower,
   class_name: "User",
   foreign_key: :twitter_follower_id,
-  primary_id: :twitter_user_id
+  primary_key: :twitter_user_id
   )
 
   belongs_to(
   :followee,
   class_name: "User",
   foreign_key: :twitter_followee_id,
-  primary_id: :twitter_user_id
+  primary_key: :twitter_user_id
   )
 end

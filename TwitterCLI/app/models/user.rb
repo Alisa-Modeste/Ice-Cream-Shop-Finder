@@ -14,19 +14,19 @@ class User < ActiveRecord::Base
   has_many(
     :inbound_follows,
     class_name: "Follow",
-    foreign_key: :followee_id,
+    foreign_key: :twitter_followee_id,
     primary_key: :twitter_user_id
   )
 
   has_many(
     :outbound_follows,
     class_name: "Follow",
-    foreign_key: :follower_id,
+    foreign_key: :twitter_follower_id,
     primary_key: :twitter_user_id
   )
 
-  has_many :followers, through: :inbound_follows, source: :outbound_follows
-  has_many :followed_users, through: :outbound_follows, source: :inbound_follows
+  has_many :followers, through: :inbound_follows, source: :follower
+  has_many :followed_users, through: :outbound_follows, source: :followee
 
   def self.fetch_by_screen_name(screen_name)
     # resource url: https://api.twitter.com/1.1/users/lookup.json
@@ -126,7 +126,7 @@ class User < ActiveRecord::Base
 
     follower_ids.each do |follower|
       f = Follow.new(twitter_followee_id: self.twitter_user_id, twitter_follower_id: follower)
-      unless f.persisted?
+      unless f.persisted? || follower.nil?
         f.save!
       end
     end
