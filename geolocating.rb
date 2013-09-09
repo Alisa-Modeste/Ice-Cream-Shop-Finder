@@ -3,6 +3,34 @@ require 'addressable/uri'
 require 'json'
 require 'set'
 
+# updates stores_array to contain dirs and distances
+def get_directions(address, stores_array, store_index)
+  response = RestClient.get(address)
+  results = JSON.parse(response)
+
+  #results["routes"][0]["legs"][0]["distance"]
+  #p results["routes"][0]["legs"][0]["distance"]["text"]
+  #
+  #p results["routes"][0]["legs"][0]["steps"][0]
+  #puts "puts steps"
+  directions = []
+
+  #p "routes #{results["routes"]}"
+  if results["routes"][0].nil?
+    sleep(1)
+    return get_directions(address, stores_array, store_index)
+  end
+  results["routes"][0]["legs"][0]["steps"].each do |step|
+    directions << step["html_instructions"]
+  end
+  directions_string = directions.join("\n")
+  stores_array[store_index][:directions] = directions_string
+  distance_string = results["routes"][0]["legs"][0]["distance"]["text"]
+  stores_array[store_index][:distance] = distance_string
+
+end
+
+
 address = Addressable::URI.new(
    :scheme => "http",
    :host => "maps.googleapis.com",
@@ -35,9 +63,9 @@ address = Addressable::URI.new(
 
 response = RestClient.get(address)
 results = JSON.parse(response)
-p results["results"][0]["geometry"]["location"]["lng"]
-p results["results"][0]["geometry"]["location"]["lat"]
-p results["results"][0]["name"]
+# p results["results"][0]["geometry"]["location"]["lng"]
+# p results["results"][0]["geometry"]["location"]["lat"]
+# p results["results"][0]["name"]
 
 stores_array = []
 results["results"].each do |r|
@@ -52,31 +80,32 @@ end
 
 # request URL: http://maps.googleapis.com/maps/api/directions/output?parameters
 
-address = Addressable::URI.new(
-  scheme: "http",
-  host: "maps.googleapis.com",
-  path: "maps/api/directions/json",
-  query_values: {origin: "#{latitude},#{longitude}",
-                destination: "#{stores_array[0][:lat]},#{stores_array[0][:lng]}",
-                  sensor: false }
-                  #change travel mode
-                  #html_instructions
-).to_s
 
+stores_array.each_index do |store_index|
+  address = Addressable::URI.new(
+    scheme: "http",
+    host: "maps.googleapis.com",
+    path: "maps/api/directions/json",
+    query_values: {origin: "#{latitude},#{longitude}",
+                  destination:
+                  "#{stores_array[store_index][:lat]},#{stores_array[store_index][:lng]}",
+                    sensor: false }
+                    #change travel mode
+                    #html_instructions
+  ).to_s
 
+  p "lat and long #{stores_array[store_index][:lat]},#{stores_array[store_index][:lng]}"
 
-def get_directions(address)
-  response = RestClient.get(address)
-  results = JSON.parse(response)
-
-  #results["routes"][0]["legs"][0]["distance"]
-  #p results["routes"][0]["legs"][0]["distance"]["text"]
-  #
-  p results["routes"][0]["legs"][0]["steps"][0]
-  puts "puts steps"
-  results["routes"][0]["legs"][0]["steps"].each do |step|
-    p step["html_instructions"]
-  end
+  get_directions(address, stores_array, store_index)
 end
+
+# stores_array.each_with_index do |store, i|
+#   puts "(#{i}): #{store[:name]}, #{store[:distance]}"
+# end
+
+stores_array.each do |store|
+  puts "#{store[:name]}, #{store[:distance]}"
+end
+
 
 
